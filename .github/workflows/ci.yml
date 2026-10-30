@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       zebra:
-        image: zcash/zebra:latest
+        image: zfnd/zebra:latest
         ports:
           - 18232:18232
         env:
