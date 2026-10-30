@@ -9,18 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      zebra:
-        image: zfnd/zebra:latest
-        ports:
-          - 18232:18232
-        env:
-          ZEBRA_NETWORK: Regtest
-        options: >-
-          --health-cmd "curl -f http://localhost:18232/ || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +22,40 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest
+
+      - name: Create Zebra regtest config
+        run: |
+          mkdir -p zebra_config
+          cat << 'EOF' > zebra_config/zebra.toml
+          [network]
+          network = "Regtest"
+
+          [rpc]
+          listen_addr = "0.0.0.0:18232"
+          EOF
+
+      - name: Start Zebra Regtest Node
+        run: |
+          docker run -d \
+            --name zebra \
+            -p 18232:18232 \
+            -v $(pwd)/zebra_config/zebra.toml:/etc/zebra/zebra.toml \
+            zfnd/zebra:latest zebrad -c /etc/zebra/zebra.toml start
+
+      - name: Wait for Zebra RPC readiness
+        run: |
+          echo "Waiting for Zebra RPC..."
+          for i in {1..30}; do
+            if curl -s -u zcashuser:zcashpassword -d '{"jsonrpc":"1.0","id":"curltext","method":"getblockcount","params":[]}' -H 'content-type: text/plain;' http://127.0.0.1:18232/ > /dev/null; then
+              echo "Zebra RPC is ready!"
+              exit 0
+            fi
+            echo "Waiting..."
+            sleep 2
+          done
+          echo "Zebra failed to start within timeout"
+          docker logs zebra
+          exit 1
 
       - name: Run tests against Zebra Regtest
         env:
