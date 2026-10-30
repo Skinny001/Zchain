@@ -32,6 +32,10 @@ jobs:
 
           [rpc]
           listen_addr = "0.0.0.0:18232"
+          enable_cookie_auth = false
+
+          [zcashd_compat]
+          enabled = true
           EOF
 
       - name: Start Zebra Regtest Node
@@ -46,7 +50,7 @@ jobs:
         run: |
           echo "Waiting for Zebra RPC..."
           for i in {1..30}; do
-            if curl -s -u zcashuser:zcashpassword -d '{"jsonrpc":"1.0","id":"curltext","method":"getblockcount","params":[]}' -H 'content-type: text/plain;' http://127.0.0.1:18232/ > /dev/null; then
+            if curl -s -d '{"jsonrpc":"1.0","id":"curltext","method":"getblockcount","params":[]}' -H 'content-type: application/json' http://127.0.0.1:18232/ > /dev/null; then
               echo "Zebra RPC is ready!"
               exit 0
             fi
@@ -61,8 +65,6 @@ jobs:
         env:
           RPC_HOST: 127.0.0.1
           RPC_PORT: 18232
-          RPC_USER: zcashuser
-          RPC_PASSWORD: zcashpassword
         run: |
           pytest
           python zchain.py height
